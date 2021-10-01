@@ -1,4 +1,5 @@
 #include "VKApplication.h"
+#include "VKRenderer.h"
 
 extern std::vector<const char*> instanceExtensionNames;
 extern std::vector<const char*> layerNames;
@@ -8,10 +9,20 @@ VKApplication::VKApplication()
 {
 	// 응용 프로그램에서 시작, 열거된 인스턴스 레이어들
 	instanceObj.layerExtension.getInstanceLayerProperties();
+
+	deviceObj = NULL;
+	debugFlag = false;
+	rendererObj = NULL;
+
+#if defined(DEBUG) | defined(_DEBUG)
+	debugFlag = true;
+#endif
 }
 
 VKApplication::~VKApplication()
 {
+	delete rendererObj;
+	rendererObj = NULL;
 }
 
 VKApplication* VKApplication::GetInstance()
@@ -20,12 +31,23 @@ VKApplication* VKApplication::GetInstance()
 	return &vkApplication;
 }
 
+//********************* CYCLE *********************//
 void VKApplication::initialize()
 {
 	char title[] = "Hello World!!";
 
+	// 레이어가 이 기기에서 지원되는지 확인
+	if (debugFlag) {
+		instanceObj.layerExtension.areLayersSupported(layerNames);
+	}
+
 	// Vulkan 인스턴스를 지정한 레이어와 확장판 이름으로 생성
 	createVulkanInstance(layerNames, instanceExtensionNames, title);
+
+	// 디버깅 보고서 생성
+	if (debugFlag) {
+		instanceObj.layerExtension.createDebugReportCallback();
+	}
 
 	// 시스템의 물리적 장치 목록을 가져옴 
 	std::vector<VkPhysicalDevice> gpuList;
@@ -35,11 +57,38 @@ void VKApplication::initialize()
 	if (gpuList.size() > 0) {
 		handShakeWithDevice(&gpuList[0], layerNames, deviceExtensionNames);
 	}
+
+	rendererObj = new VKRenderer(this, deviceObj);
+
+	rendererObj->initialize();
+}
+
+void VKApplication::prepare()
+{
+	rendererObj->prepare();
+}
+
+bool VKApplication::render()
+{
+	return rendererObj->render();
 }
 
 void VKApplication::deInitialize()
 {
+	rendererObj->destroyFrameBuffers();
+	rendererObj->destroyRenderpass();
+	rendererObj->destroyDrawableVertexBuffer();
+	rendererObj->destroyDepthBuffer();
+	rendererObj->getSwapChain()->destroySwapChain();
+	rendererObj->destroyCommandBuffer();
+	rendererObj->destroyCommandPool();
+	rendererObj->destroyPresentationWindow();
+
 	deviceObj->destroyDevice();
+	if (debugFlag) {
+		instanceObj.layerExtension.destroyDebugReportCallback();
+	}
+
 	instanceObj.destroyInstance();
 }
 

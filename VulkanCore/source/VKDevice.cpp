@@ -51,6 +51,23 @@ void VKDevice::destroyDevice()
 {
 	vkDestroyDevice(device, NULL);
 }
+//잠깐 휴식... 시부래 
+bool VKDevice::memoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t* typeIndex)
+{
+	// 이들 속성의 첫 번째 인덱스를 찾기 위해 memtypes 검색
+	for (uint32_t i = 0; i < 32; i++) {
+		if ((typeBits & 1) == 1) {
+			// 유형이 사용 가능할 경우 사용자 속성이랑 일치하는지를 확인
+			if ((memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
+				*typeIndex = i;
+				return true;
+			}
+		}
+		typeBits >>= 1;
+	}
+	// 일치하는 메모리 유형이 없음, 실패 반환
+	return false;
+}
 
 void VKDevice::getPhysicalDeviceQueuesAndProperties()
 {
@@ -100,4 +117,12 @@ uint32_t VKDevice::getGraphicsQueueHandle()
 	}
 
 	return 0;
+}
+
+void VKDevice::getDeviceQueue()
+{
+	// Parminder: this depends on intialiing the SwapChain to 
+	// get the graphics queue with presentation support
+	// SwapChain을 초기화 하기위한 프레젠테이션에 필요한 큐를 가져옴 (그래픽스 큐의 인덱스)
+	vkGetDeviceQueue(device, graphicsQueueWithPresentIndex, 0, &queue);
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "VKInstance.h"
 #include "VKDevice.h"
+#include "VKRenderer.h"
 #include "VKLayerAndExtension.h"
 
 class VKApplication
@@ -18,9 +19,9 @@ public:
 
 	// Simple program life cycle
 	void initialize();				// Initialize and allocate resources
-	//void prepare();					// Prepare resource
+	void prepare();					// Prepare resource
 	//void update();					// Update data
-	//bool render();					// Render primitives
+	bool render();					// Render primitives
 	void deInitialize();			// Release resources
 
 private:
@@ -42,6 +43,9 @@ private:
 
 public:
 	VKInstance  instanceObj;
+	VKRenderer* rendererObj;
+	VKDevice*	deviceObj;
 
-	VKDevice* deviceObj;
+private:
+	bool debugFlag;
 };

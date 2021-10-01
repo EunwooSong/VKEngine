@@ -80,6 +80,9 @@ public:
 	VkResult createDevice(std::vector<const char*>& layers, std::vector<const char*>& extensions);
 	void destroyDevice();
 
+	// 메모리 유형 결정, 이미지의 메모리를 할당하는 데 적합한 메모리 유형을 결정함
+	bool memoryTypeFromProperties(uint32_t typeBits, VkFlags requirements_mask, uint32_t* typeIndex);
+
 	// 물리적 장치의 큐와 속성을 가져옴
 	void getPhysicalDeviceQueuesAndProperties();
 
@@ -87,4 +90,7 @@ public:
 	// VkQueueFamilyProperties::queueFlags 비트 정보를 확인해 해당 큐를 찾는다.
 	// 우리는 그래픽스 큐를 가져올거임
 	uint32_t getGraphicsQueueHandle();
+
+	// 큐와 관련된 멤버 함수들
+	void getDeviceQueue();
 };

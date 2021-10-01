@@ -22,7 +22,7 @@ VkResult VKInstance::createInstacne(std::vector<const char*>& layers, std::vecto
 	// Vulkan 인스턴스 생성 정보 구조체 정의
 	VkInstanceCreateInfo instInfo = {};		
 	instInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;			// 제어 구조체의 자료형에 대한 정보를 갖고 있음 (VK_STRUCTURE_TYPE_INSTANCED_CREATE_INFO)
-	instInfo.pNext = VK_NULL_HANDLE;									// 확장판 지정 구조체에 대한 유효한 포인터를 지정하거나 Null이어야 한다
+	instInfo.pNext = &layerExtension.dbgReportCreateInfo;				// 확장판 지정 구조체에 대한 유효한 포인터를 지정하거나 Null이어야 한다
 	instInfo.flags = 0;													// ???
 	instInfo.pApplicationInfo = &appInfo;								// 위에서 설정한 응용 프로그램의 지정 정보
 

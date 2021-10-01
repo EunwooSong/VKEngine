@@ -116,3 +116,131 @@ VkResult VulkanLayerAndExtension::getDeviceExtensionProperties(VkPhysicalDevice*
 	}
 	return result;
 }
+
+VkBool32 VulkanLayerAndExtension::areLayersSupported(std::vector<const char*>& layerNames)
+{
+	uint32_t checkCount = (uint32_t)layerNames.size();
+	uint32_t layerCount = (uint32_t)layerPropertyList.size();
+		
+	std::vector<const char*> unsupportLayerNames;
+	for (uint32_t i = 0; i < checkCount; i++) {
+		VkBool32 isSupported = 0;
+		for (uint32_t j = 0; j < layerCount; j++) {
+			if (!strcmp(layerNames[i], layerPropertyList[j].properties.layerName)) {
+				isSupported = 1;
+			}
+		}
+
+		if (!isSupported) {
+			std::cout << "No Layer support found, removed from layer: " << layerNames[i] << std::endl;
+			unsupportLayerNames.push_back(layerNames[i]);
+		}
+		else {
+			std::cout << "Layer supported: " << layerNames[i] << std::endl;
+		}
+	}
+
+	for (auto i : unsupportLayerNames) {
+		auto it = std::find(layerNames.begin(), layerNames.end(), i);
+		if (it != layerNames.end()) layerNames.erase(it);
+	}
+
+	return true;
+}
+
+VkResult VulkanLayerAndExtension::createDebugReportCallback()
+{
+	VkResult result;
+
+	VKApplication* appObj = VKApplication::GetInstance();
+	VkInstance* instance = &appObj->instanceObj.instance;
+
+	// 디버깅 보고서는 vkCreateDebugReportCallbackEXT API를 사용해 작성한다.
+	// 모든 디버깅 관련 API는 vkGetInstanceProcAddr()API로 쿼리하고 동적으로 링크해야 한다.
+	// vkGetInstanceProcAddr(vkInstance, name)은 인스턴스 계층 확장판을 동적으로 가져온다. 
+	// vkInstance : VKInstance 자료형의 변수.. NULL로 설정시 이름은 반드시 다음 중 하나로 설정해야함.
+	// 	   vkEnumerateInstanceExtensionProperties, vkEnumerateInstanceLayerProperties, vkCreateInstance
+	// 	name : 동적 링크를 위해 쿼리해야 할 API의 이름이다..
+	// vkCreateDebugReportCallbackEXT API 얻기
+	dbgCreateDebugReportCallback = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(*instance, "vkCreateDebugReportCallbackEXT");
+	if (!dbgCreateDebugReportCallback) {
+		std::cout << "Error: GetInstanceProcAddr unable to locate vkCreateDebugReportCallbackEXT function." << std::endl;
+		return VK_ERROR_INITIALIZATION_FAILED;
+	}
+	std::cout << "GetInstanceProcAddr loaded dbgCreateDebugReportCallback function\n";
+
+	// vkDestroyDebugReportCallbackEXT API 얻기
+	dbgDestroyDebugReportCallback = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(*instance, "vkDestroyDebugReportCallbackEXT");
+	if (!dbgDestroyDebugReportCallback) {
+		std::cout << "Error: GetInstanceProcAddr unable to locate vkDestroyDebugReportCallbackEXT function." << std::endl;
+		return VK_ERROR_INITIALIZATION_FAILED;
+	}
+	std::cout << "GetInstanceProcAddr loaded dbgDestroyDebugReportCallback function\n";
+
+	// dbgCreateDebugReportCallback()  함수 포인터로 디버깅 보고서 개체를 생성하고 debugReportCallback에 핸들을 저장한다.
+	// VkDebugReportCallbackCreateInfoEXT(type, pNext, flags, fnCallback, pUserData)
+	// 	   type : 제어 구조체의 자료형 정보로, 반드시 VK_STRUCTRE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT로 설정해야함
+	// 	   flags : 디버깅할 때 가져올 디버깅 정보의 종류를 정의
+	// 	   fnCallback 디버깅 메시지를 필터링하고 표시하기 위한 함수를 참조
+	// 	   
+	// 	   flags...?
+	// 	    - VK_DEBUG_REPORT_INFORMATION_BIT_EXT			: 현재 실행중인 응용 프로그램의 백그라운드에서 일어나는 작업을 사용자 친화적인 정보(디버깅에 유용한 리소스의 상세 정보)로 표시
+	// 	    - VK_DEBUG_REPORT_WARNING_BIT_EXIT				: 잠재적으로 부정확하거나 위험한 API 사용에 대한 경고 메시지를 제공한다.
+	// 	    - VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT	: 잠재적으로 성능에 손실이 있을 것으로 예상되는 Vulkan의 비최적화된 사용을 나타낸다.
+	// 	    - VK_DEBUG_REPORT_ERROR_BIT_EXT					: 정의되지 않은 결과(응용의 비정상적인 종료)를 일으킬수 있는 부정확한 API사용을 알려주는 오류 메시지를 참조한다.
+	// 	    - VK_DEBUG_REPORT_DEBUG_BIT_EXT					: 로더와 레이어로부터 가져온 진단 정보이다.
+	// 디버깅 보고서 제어 구조체를 정의하고, 'debugFunction'의 참조를 제공
+	// 이 함수는 콘솔에 디버깅 정보 출력
+	dbgReportCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+	dbgReportCreateInfo.pfnCallback = debugFunction;
+	dbgReportCreateInfo.pUserData = NULL;
+	dbgReportCreateInfo.pNext = NULL;
+	dbgReportCreateInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_ERROR_BIT_EXT |
+		VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+
+	// 디버깅 보고서의 콜백 함수를 생성하고 핸들을 'debugReportCallback'에 저장
+	result = dbgCreateDebugReportCallback(*instance, &dbgReportCreateInfo, NULL, &debugReportCallback);
+	if (result == VK_SUCCESS) {
+		std::cout << "Debug report callback object created successfully\n";
+	}
+	return result;
+}
+
+void VulkanLayerAndExtension::destroyDebugReportCallback()
+{
+	VKApplication* appObj = VKApplication::GetInstance();
+	VkInstance& instance = appObj->instanceObj.instance;
+	dbgDestroyDebugReportCallback(instance, debugReportCallback, NULL);
+}
+
+// 보고된 메시지와 함께 디버깅 정보의 유형을 설명한다.
+VKAPI_ATTR VkBool32 VKAPI_CALL VulkanLayerAndExtension::debugFunction(VkFlags msgFlags,
+	VkDebugReportObjectTypeEXT objType,
+	uint64_t srcObject, size_t location,
+	int32_t msgCode, const char* layerPrefix,
+	const char* msg, void* userData)
+{
+		if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+			std::cout << "[VK_DEBUG_REPORT] ERROR: [" << layerPrefix << "] Code" << msgCode << ":" << msg << std::endl;
+		}
+		else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+			std::cout << "[VK_DEBUG_REPORT] WARNING: [" << layerPrefix << "] Code" << msgCode << ":" << msg << std::endl;
+		}
+		else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+			std::cout << "[VK_DEBUG_REPORT] INFORMATION: [" << layerPrefix << "] Code" << msgCode << ":" << msg << std::endl;
+		}
+		else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+			std::cout << "[VK_DEBUG_REPORT] PERFORMANCE: [" << layerPrefix << "] Code" << msgCode << ":" << msg << std::endl;
+		}
+		else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+			std::cout << "[VK_DEBUG_REPORT] DEBUG: [" << layerPrefix << "] Code" << msgCode << ":" << msg << std::endl;
+		}
+		else {
+			return VK_FALSE;
+		}
+
+		fflush(stdout);
+		return VK_TRUE;
+}
