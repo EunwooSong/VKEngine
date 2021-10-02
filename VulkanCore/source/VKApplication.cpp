@@ -75,6 +75,12 @@ bool VKApplication::render()
 
 void VKApplication::deInitialize()
 {
+	// Destroy all the pipeline objects
+	rendererObj->destroyPipeline();
+
+	// Destroy the associate pipeline cache
+	rendererObj->getPipelineObject()->destroyPipelineCache();
+
 	rendererObj->destroyFrameBuffers();
 	rendererObj->destroyRenderpass();
 	rendererObj->destroyDrawableVertexBuffer();

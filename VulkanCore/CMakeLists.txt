@@ -53,6 +53,15 @@ else()
 	endif()
 endif()
 
+# BUILD_SPV_ON_COMPILE_TIME - accepted value ON or OFF, default value OFF.
+# ON  - Reads the GLSL shader file and auto convert in SPIR-V form (.spv). 
+# 			This requires additional libraries support from 
+#			VulkanSDK like SPIRV glslang OGLCompiler OSDependent HLSL
+# OFF - Only reads .spv files, which need to be compiled offline 
+#			using glslangValidator.exe.
+# For example: glslangValidator.exe <GLSL file name> -V -o <output filename in SPIR-V(.spv) form>
+option(BUILD_SPV_ON_COMPILE_TIME "BUILD_SPV_ON_COMPILE_TIME" OFF)
+
 # Specify a suitable project name
 project(VulkanCore)
 
@@ -71,6 +80,46 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 
 	# vulkan-1을 위한 링크 디렉터리
 	link_directories(${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib;)
+
+	if(BUILD_SPV_ON_COMPILE_TIME)
+		
+		# 전처리기 플래그는 솔루션이 glslang 라이브러리 함수를 사용할 수 있게 한다.
+		add_definitions(-DAUTO_COMPILE_GLSL_TO_SPV)
+
+		#GLSL - Vulkan SDK의 glslang 라이브러리를 사용해 GLSL을 SPV 파일로 컴파일하는 데 사용한다.
+		# 이를 사용할 경우 GLSL을 SPIR-V(.spv) 형식으로 오프라인에서 변환할 필요가 없다.
+		set(GLSLANGDIR "${VULKAN_PATH}/glslang")
+		get_filename_component(GLSLANG_PREFIX "${GLSLANGDIR}" ABSOLUTE)
+		if(NOT EXISTS ${GLSLANG_PREFIX})
+			message(FATAL_ERROR "Necessary glslang components do not exist: " ${GLSLANG_PREFIX})
+		endif()
+
+		# glslang 디렉터리를 인클루드
+		include_directories( ${GLSLANG_PREFIX} )
+
+		# GLSL을 SPV로 컴파일하기 위해서는 다음 라이브러리를 사용한다
+		set(GLSLANG_LIBS SPIRV glslang OGLCompiler OSDependent HLSL)
+
+		# 각 라이브러리 파일들에 대해 파일들의 링크 목록을 만듬
+		foreach(x ${GLSLANG_LIBS})
+			list(APPEND VULKAN_LIB_LIST debug ${x}d optimized ${x})
+		endforeach()
+		
+		# Note: While configuring CMake for glslang we created the 
+		# binaries in a "build" folder inside ${VULKAN_PATH}/glslang.
+		# Therefore, you must edit the below lines for your custorm 
+		# path like <Your binary path>/OGLCompilersDLL, <Your binary path>/OSDependent/Windows
+
+		# 주의 : CMake로 glslang을 설정하는 경우
+		# 실행 파일이 ${VULKAN_PATH}/glslang 내의 "build" 폴더에 만들어진다.
+		# 따라서 원하는 경로에 실행 파일이 생성되게 하려면 다음 내용을 편집한다.
+		# 예 : <Your binary path>/OGLCompilersDLL, <Your binary path>/OSDependent/Windows
+		link_directories(${VULKAN_PATH}/glslang/build/OGLCompilersDLL )
+		link_directories(${VULKAN_PATH}/glslang/build/glslang/OSDependent/Windows)
+		link_directories(${VULKAN_PATH}/glslang/build/glslang)
+		link_directories(${VULKAN_PATH}/glslang/build/SPIRV)
+		link_directories(${VULKAN_PATH}/glslang/build/hlsl)
+	endif()
 endif()
 
 # 헤더 파일과 소스 파일들을 함께 묶음

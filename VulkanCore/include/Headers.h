@@ -18,6 +18,7 @@
 #include <sstream>
 #include <vector>
 #include <iomanip>
+#include <fstream>
 #include <assert.h>
 
 // Header files for Singleton
@@ -26,3 +27,6 @@
 
 /*********** VULKAN HEADER FILES ***********/
 #include <vulkan/vulkan.h>
+#ifdef AUTO_COMPILE_GLSL_TO_SPV
+#include "SPIRV/GlslangToSpv.h"
+#endif

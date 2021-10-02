@@ -2,6 +2,8 @@
 #include "Headers.h"
 #include "VKSwapChain.h"
 #include "VKDrawable.h"
+#include "VKShader.h"
+#include "VKPipeline.h"
 
 // 샘플러의 수는 이미지 생성시 동일한 것이 필요하다.
 // 렌더 패스와 파이프라인 생성시 사용된다.
@@ -35,6 +37,7 @@ public:
 	inline VKSwapChain* getSwapChain() { return swapChainObj; }
 	inline std::vector<VKDrawable*>* getDrawingItems() { return &drawableList; }
 	inline VkCommandPool* getCommandPool() { return &cmdPool; }
+	inline VKPipeline* getPipelineObject() { return &pipelineObj; }
 
 	void createCommandPool();							// 커맨드 풀 생성
 	void buildSwapChainAndDepthImage();					// 스와프 체인 색상 이미지 생성
@@ -42,6 +45,8 @@ public:
 	void createVertexBuffer();
 	void createRenderPass(bool includeDepth, bool clear = true); // 렌더 패스 생성
 	void createFrameBuffer(bool includeDepth);
+	void createShaders();
+	void createPipelineStateManagement();
 
 	void destroyCommandBuffer();
 	void destroyCommandPool();
@@ -49,6 +54,7 @@ public:
 	void destroyDrawableVertexBuffer();
 	void destroyRenderpass();
 	void destroyFrameBuffers();
+	void destroyPipeline();
 
 public:
 #ifdef _WIN32
@@ -78,8 +84,8 @@ public:
 	int					width, height;	// 윈도의 폭과 높이
 
 	VkRenderPass renderPass;
-	std::vector<VkFramebuffer> framebuffers; // 각 스와프 체인에 해당하는 프레임 버퍼 수
-
+	std::vector<VkFramebuffer> framebuffers;	// 각 스와프 체인에 해당하는 프레임 버퍼 수
+	std::vector<VkPipeline*> pipelineList;		// 각각의 드로잉 개체에 대한 파이프라인
 	bool ready;
 
 private:
@@ -91,4 +97,6 @@ private:
 	VKSwapChain* swapChainObj;
 
 	std::vector<VKDrawable*> drawableList;
+	VKShader 	   shaderObj;
+	VKPipeline 	   pipelineObj;
 };

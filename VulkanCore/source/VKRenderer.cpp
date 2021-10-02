@@ -2,6 +2,7 @@
 #include "VKApplication.h"
 #include "Wrappers.h"
 #include "MeshData.h"
+#include "VKPipeline.h"
 
 VKRenderer::VKRenderer(VKApplication* app, VKDevice* deviceObject)
 {
@@ -17,7 +18,10 @@ VKRenderer::VKRenderer(VKApplication* app, VKDevice* deviceObject)
 
 	swapChainObj = new VKSwapChain(this);
 
-	VKDrawable* drawableObj = new VKDrawable(this);
+	VKDrawable* drawableObj = new VKBackground(this);
+	drawableList.push_back(drawableObj);
+
+	drawableObj = new VKTriangle(this);
 	drawableList.push_back(drawableObj);
 
 	ready = false;
@@ -59,6 +63,11 @@ void VKRenderer::initialize()
 	// Use render pass and create frame buffer
 	createFrameBuffer(includeDepth);
 
+	// Create the vertex and fragment shader
+	createShaders();
+
+	// Manage the pipeline state objects
+	createPipelineStateManagement();
 	ready = true;
 }
 
@@ -240,6 +249,9 @@ void VKRenderer::setImageLayout(
 LRESULT VKRenderer::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	VKApplication* appObj = VKApplication::GetInstance();
+	VkPresentInfoKHR present = {};
+	VkResult result;
+
 	switch (uMsg)
 	{
 	case WM_CLOSE:
@@ -252,6 +264,16 @@ LRESULT VKRenderer::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		for (VKDrawable * drawableObj : appObj->rendererObj->drawableList)
 		{
 			drawableObj->render();
+
+			// 윈도에 이미지 표시
+			present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			present.swapchainCount = 1;
+			present.pSwapchains = &appObj->rendererObj->swapChainObj->scPublicVars.swapChain;
+			present.pImageIndices = &appObj->rendererObj->swapChainObj->scPublicVars.currentColorBuffer;
+
+			// 표시를 위해 이미지를 큐에 제출
+			result = appObj->rendererObj->swapChainObj->fpQueuePresentKHR(appObj->deviceObj->queue, &present);
+			assert(result == VK_SUCCESS);
 		}
 		break;
 
@@ -532,6 +554,47 @@ void VKRenderer::createFrameBuffer(bool includeDepth)
 	}
 }
 
+void VKRenderer::createShaders()
+{
+	void* vertShaderCode, *fragShaderCode;
+	size_t sizeVert, sizeFrag;
+
+#ifdef AUTO_COMPILE_GLSL_TO_SPV
+	vertShaderCode = readFile("./../Draw.vert", &sizeVert);
+	fragShaderCode = readFile("./../Draw.frag", &sizeFrag);
+	
+	shaderObj.buildShader((const char*)vertShaderCode, (const char*)fragShaderCode);
+#else
+	vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
+	fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
+
+	shaderObj.buildShaderModuleWithSPV((uint32_t*)vertShaderCode, sizeVert, (uint32_t*)fragShaderCode, sizeFrag);
+#endif
+}
+
+void VKRenderer::createPipelineStateManagement()
+{
+	pipelineObj.createPipelineCache();
+
+	const bool depthPresent = true;
+	for (VKDrawable * drawableObj : drawableList)
+	{
+		// 각각의 드로잉 개체에 대해 해당 파이프라인 생성
+		VkPipeline* pipeline = (VkPipeline*)malloc(sizeof(VkPipeline));
+		if (pipelineObj.createPipeline(drawableObj, pipeline, &shaderObj, depthPresent))
+		{
+			pipelineList.push_back(pipeline);
+			drawableObj->setPipeline(pipeline);
+		}
+		else
+		{
+			free(pipeline);
+			pipeline = NULL;
+			std::cout << "Pipeline Error" << std::endl;
+		}
+	}
+}
+
 void VKRenderer::destroyCommandBuffer()
 {
 	VkCommandBuffer cmdBufs[] = { cmdDepthImage };
@@ -571,4 +634,14 @@ void VKRenderer::destroyFrameBuffers()
 		vkDestroyFramebuffer(deviceObj->device, framebuffers.at(i), NULL);
 	}
 	framebuffers.clear();
+}
+
+void VKRenderer::destroyPipeline()
+{
+	for (VkPipeline * pipeline : pipelineList)
+	{
+		vkDestroyPipeline(deviceObj->device, *pipeline, NULL);
+		free(pipeline);
+	}
+	pipelineList.clear();
 }

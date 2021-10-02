@@ -169,3 +169,5 @@ public:
 	// fence : 제출된 커맨드 버퍼의 완료
 	static void submitCommandBuffer(const VkQueue& queue, const VkCommandBuffer* cmdBufList, const VkSubmitInfo* submitInfo = NULL, const VkFence& fence = VK_NULL_HANDLE);
 };
+
+void* readFile(const char* spvFileName, size_t* fileSize);
