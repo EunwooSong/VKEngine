@@ -1,0 +1,5 @@
+C:/VulkanSDK/1.2.189.2/Bin32/glslc.exe PushConstant.vert -o PushConstant-vert.spv
+C:/VulkanSDK/1.2.189.2/Bin32/glslc.exe PushConstant.frag -o PushConstant-frag.spv
+pause
+
+// VulkanSDK/(Version)/ . . .

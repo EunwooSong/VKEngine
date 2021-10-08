@@ -68,6 +68,11 @@ void VKApplication::prepare()
 	rendererObj->prepare();
 }
 
+void VKApplication::update()
+{
+	rendererObj->update();
+}
+
 bool VKApplication::render()
 {
 	return rendererObj->render();
@@ -83,12 +88,14 @@ void VKApplication::deInitialize()
 
 	rendererObj->destroyFrameBuffers();
 	rendererObj->destroyRenderpass();
-	rendererObj->destroyDrawableVertexBuffer();
+	rendererObj->destoryDrawableObjects();
+	rendererObj->destroySynchronizationObjects();
 	rendererObj->destroyDepthBuffer();
 	rendererObj->getSwapChain()->destroySwapChain();
 	rendererObj->destroyCommandBuffer();
 	rendererObj->destroyCommandPool();
 	rendererObj->destroyPresentationWindow();
+	rendererObj->destroyShader();
 
 	deviceObj->destroyDevice();
 	if (debugFlag) {

@@ -19,7 +19,11 @@ public:
 	//Simple life cycle
 	void initialize();
 	void prepare();
+	void update();
 	bool render();
+
+	// 실제 렌더 처리 진행 (스와프 이미지 관리)
+	void process();
 
 	// 빈 윈도 생성 (나중에 인자 값의 조정이 필요..)
 	void createPresentationWindow(const int& windowWidth = 500, const int& windowHeight = 500);
@@ -46,15 +50,19 @@ public:
 	void createRenderPass(bool includeDepth, bool clear = true); // 렌더 패스 생성
 	void createFrameBuffer(bool includeDepth);
 	void createShaders();
+	void createDescriptors();							// 디스크립터 세트 레이아웃 생성
 	void createPipelineStateManagement();
+	void createPushConstants();			// 푸시 상수 리소스 업데이트
 
 	void destroyCommandBuffer();
 	void destroyCommandPool();
+	void destroySynchronizationObjects();
 	void destroyDepthBuffer();
-	void destroyDrawableVertexBuffer();
 	void destroyRenderpass();
 	void destroyFrameBuffers();
 	void destroyPipeline();
+	void destoryDrawableObjects();
+	void destroyShader();
 
 public:
 #ifdef _WIN32
@@ -80,6 +88,8 @@ public:
 	VkCommandBuffer		cmdDepthImage;	// 깊이 이미지 커맨드 버퍼
 	VkCommandPool		cmdPool;		// 커맨드 풀
 	VkCommandBuffer		cmdVertexBuffer;// 버텍스 버퍼 - Triangle geometry
+	VkCommandBuffer		cmdPushConstant;// 푸시 상수 버퍼
+	VkCommandBuffer		cmdUniformBuffer;
 
 	int					width, height;	// 윈도의 폭과 높이
 
@@ -99,4 +109,7 @@ private:
 	std::vector<VKDrawable*> drawableList;
 	VKShader 	   shaderObj;
 	VKPipeline 	   pipelineObj;
+
+	VkSemaphore presentCompleteSemaphore;
+	VkSemaphore drawingCompleteSemaphore;
 };

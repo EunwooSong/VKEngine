@@ -3,6 +3,7 @@
 #include "Wrappers.h"
 #include "MeshData.h"
 #include "VKPipeline.h"
+#include "VKDescriptor.h"
 
 VKRenderer::VKRenderer(VKApplication* app, VKDevice* deviceObject)
 {
@@ -18,13 +19,26 @@ VKRenderer::VKRenderer(VKApplication* app, VKDevice* deviceObject)
 
 	swapChainObj = new VKSwapChain(this);
 
-	VKDrawable* drawableObj = new VKBackground(this);
+	VKDrawable* drawableObj = new VKDrawable(this);
 	drawableList.push_back(drawableObj);
 
-	drawableObj = new VKTriangle(this);
-	drawableList.push_back(drawableObj);
-
+	//프로시저와의 동기화를 위함...
 	ready = false;
+
+	VkSemaphoreCreateInfo presentCompleteSemaphoreCreateInfo;
+	presentCompleteSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	presentCompleteSemaphoreCreateInfo.pNext = NULL;
+	presentCompleteSemaphoreCreateInfo.flags = 0;
+
+	VkSemaphoreCreateInfo drawingCompleteSemaphoreCreateInfo;
+	drawingCompleteSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	drawingCompleteSemaphoreCreateInfo.pNext = NULL;
+	drawingCompleteSemaphoreCreateInfo.flags = 0;
+
+	VKDevice* deviceObj = VKApplication::GetInstance()->deviceObj;
+
+	vkCreateSemaphore(deviceObj->device, &presentCompleteSemaphoreCreateInfo, NULL, &presentCompleteSemaphore);
+	vkCreateSemaphore(deviceObj->device, &drawingCompleteSemaphoreCreateInfo, NULL, &drawingCompleteSemaphore);
 }
 
 VKRenderer::~VKRenderer()
@@ -66,8 +80,15 @@ void VKRenderer::initialize()
 	// Create the vertex and fragment shader
 	createShaders();
 
+	// Create descriptor set layout
+	createDescriptors();
+
 	// Manage the pipeline state objects
 	createPipelineStateManagement();
+
+	// Create PushConstants
+	createPushConstants();
+
 	ready = true;
 }
 
@@ -75,6 +96,14 @@ void VKRenderer::prepare() {
 	for each (VKDrawable * drawableObj in drawableList)
 	{
 		drawableObj->prepare();
+	}
+}
+
+void VKRenderer::update()
+{
+	for each (VKDrawable * drawableObj in drawableList)
+	{
+		drawableObj->update();
 	}
 }
 
@@ -92,6 +121,39 @@ bool VKRenderer::render()
 	DispatchMessage(&msg);
 	RedrawWindow(window, NULL, NULL, RDW_INTERNALPAINT);
 	return true;
+}
+
+// 스와프 이미지를 관리하고 실제 렌더링 명령을 진행합니다...?
+void VKRenderer::process()
+{
+	VkPresentInfoKHR present = {};
+
+	//사용 가능한 이미지를 가져오자!
+	uint32_t& currentColorImage = swapChainObj->scPublicVars.currentColorBuffer;
+	VkSwapchainKHR& swapChain = swapChainObj->scPublicVars.swapChain;
+
+	VkFence nullFence = VK_NULL_HANDLE;
+
+	// Get the index of the next available swapchain image:
+	VkResult result = swapChainObj->fpAcquireNextImageKHR(deviceObj->device, swapChain,
+		UINT64_MAX, presentCompleteSemaphore, VK_NULL_HANDLE, &currentColorImage);
+
+	//VkDrawable : 드로잉 개체... (ex, 레스터 전용 렌더 패스, 레이 트레이싱 전용 렌더 패스, 후처리 렌더 패스 등등..)
+	// 커맨드를 작성하고~ 그리고~
+	for (VKDrawable* drawableObj : drawableList)
+	{
+		drawableObj->render(&presentCompleteSemaphore, &drawingCompleteSemaphore);
+	}
+
+	// 윈도에 이미지 표시
+	present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present.swapchainCount = 1;
+	present.pSwapchains = &swapChainObj->scPublicVars.swapChain;
+	present.pImageIndices = &swapChainObj->scPublicVars.currentColorBuffer;
+
+	// 표시를 위해 이미지를 큐에 제출
+	result = swapChainObj->fpQueuePresentKHR(deviceObj->queue, &present);
+	assert(result == VK_SUCCESS);
 }
 
 //1. 프레젠테이션 윈도 생성
@@ -249,8 +311,6 @@ void VKRenderer::setImageLayout(
 LRESULT VKRenderer::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	VKApplication* appObj = VKApplication::GetInstance();
-	VkPresentInfoKHR present = {};
-	VkResult result;
 
 	switch (uMsg)
 	{
@@ -261,22 +321,9 @@ LRESULT VKRenderer::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT :
 		if (!appObj->rendererObj->ready) break;
 
-		for (VKDrawable * drawableObj : appObj->rendererObj->drawableList)
-		{
-			drawableObj->render();
-
-			// 윈도에 이미지 표시
-			present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			present.swapchainCount = 1;
-			present.pSwapchains = &appObj->rendererObj->swapChainObj->scPublicVars.swapChain;
-			present.pImageIndices = &appObj->rendererObj->swapChainObj->scPublicVars.currentColorBuffer;
-
-			// 표시를 위해 이미지를 큐에 제출
-			result = appObj->rendererObj->swapChainObj->fpQueuePresentKHR(appObj->deviceObj->queue, &present);
-			assert(result == VK_SUCCESS);
-		}
+		appObj->rendererObj->process();
 		break;
-
+		
 	default:
 		break;
 	}
@@ -442,14 +489,6 @@ void VKRenderer::createDepthImage()
 void VKRenderer::createVertexBuffer()
 {
 	CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdVertexBuffer);
-	CommandBufferMgr::beginCommandBuffer(cmdVertexBuffer);
-
-	for each (VKDrawable * drawableObj in drawableList)
-	{
-		drawableObj->createVertexBuffer(triangleData, sizeof(triangleData), sizeof(triangleData[0]), false);
-	}
-	CommandBufferMgr::endCommandBuffer(cmdVertexBuffer);
-	CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdVertexBuffer);
 }
 
 void VKRenderer::createRenderPass(bool includeDepth, bool clear) {
@@ -565,15 +604,41 @@ void VKRenderer::createShaders()
 	
 	shaderObj.buildShader((const char*)vertShaderCode, (const char*)fragShaderCode);
 #else
-	vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
-	fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
+	//vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
+	//fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
+	vertShaderCode = readFile("./../PushConstant-vert.spv", &sizeVert);
+	fragShaderCode = readFile("./../PushConstant-frag.spv", &sizeFrag);
 
 	shaderObj.buildShaderModuleWithSPV((uint32_t*)vertShaderCode, sizeVert, (uint32_t*)fragShaderCode, sizeFrag);
 #endif
 }
 
+void VKRenderer::createDescriptors()
+{
+	CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdUniformBuffer);
+	CommandBufferMgr::beginCommandBuffer(cmdUniformBuffer);
+
+	for each (VKDrawable * drawableObj in drawableList)
+	{
+		// 디스크립터는 다른 유사한 개체와 같이 캐싱되어 사용됨
+		drawableObj->createDescriptorSetLayout(false);
+
+		// 디스크립터 세트의 생성
+		drawableObj->createDescriptor(false);
+	}
+
+	CommandBufferMgr::endCommandBuffer(cmdUniformBuffer);
+	CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdUniformBuffer);
+}
+
 void VKRenderer::createPipelineStateManagement()
 {
+	for (VKDrawable * drawableObj : drawableList)
+	{
+		// Use the descriptor layout and create the pipeline layout.
+		drawableObj->createPipelineLayout();
+	}
+
 	pipelineObj.createPipelineCache();
 
 	const bool depthPresent = true;
@@ -595,9 +660,46 @@ void VKRenderer::createPipelineStateManagement()
 	}
 }
 
+void VKRenderer::createPushConstants()
+{
+	CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdPushConstant);
+	CommandBufferMgr::beginCommandBuffer(cmdPushConstant);
+
+	enum ColorFlag {
+		RED = 1,
+		GREEN = 2,
+		BLUE = 3,
+		MIXED_COLOR = 4,
+	};
+
+	float mixerValue = 0.3f;
+	unsigned constColorRGBFlag = BLUE;
+
+	// Create push constant data, this contain a constant
+	// color flag and mixer value for non-const color
+	unsigned pushConstants[2] = {};
+	pushConstants[0] = constColorRGBFlag;
+	memcpy(&pushConstants[1], &mixerValue, sizeof(float));
+
+	// Check if number of push constants does not exceed the allowed size
+	int maxPushContantSize = getDevice()->gpuProps.limits.maxPushConstantsSize;
+	if (sizeof(pushConstants) > maxPushContantSize) {
+		assert(0);
+		printf("Push constand size is greater than expected, max allow size is %d", maxPushContantSize);
+	}
+
+	for (VKDrawable * drawableObj : drawableList)
+	{
+		vkCmdPushConstants(cmdPushConstant, drawableObj->pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushConstants), pushConstants);
+	}
+
+	CommandBufferMgr::endCommandBuffer(cmdPushConstant);
+	CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdPushConstant);
+}
+
 void VKRenderer::destroyCommandBuffer()
 {
-	VkCommandBuffer cmdBufs[] = { cmdDepthImage };
+	VkCommandBuffer cmdBufs[] = { cmdDepthImage, cmdPushConstant, cmdUniformBuffer, cmdVertexBuffer };
 	vkFreeCommandBuffers(deviceObj->device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
 
@@ -608,19 +710,18 @@ void VKRenderer::destroyCommandPool()
 	vkDestroyCommandPool(deviceObj->device, cmdPool, NULL);
 }
 
+void VKRenderer::destroySynchronizationObjects() {
+	VKDevice* deviceObj = application->deviceObj;
+
+	vkDestroySemaphore(deviceObj->device, presentCompleteSemaphore, NULL);
+	vkDestroySemaphore(deviceObj->device, drawingCompleteSemaphore, NULL);
+}
+
 void VKRenderer::destroyDepthBuffer()
 {
 	vkDestroyImage(deviceObj->device, Depth.image, NULL);
 	vkDestroyImageView(deviceObj->device, Depth.view, NULL);
 	vkFreeMemory(deviceObj->device, Depth.mem, NULL);
-}
-
-void VKRenderer::destroyDrawableVertexBuffer()
-{
-	for (VKDrawable * drawableObj : drawableList)
-	{
-		drawableObj->destroyVertexBuffer();
-	}
 }
 
 void VKRenderer::destroyRenderpass()
@@ -644,4 +745,28 @@ void VKRenderer::destroyPipeline()
 		free(pipeline);
 	}
 	pipelineList.clear();
+}
+
+void VKRenderer::destoryDrawableObjects()
+{
+	for (VKDrawable* dObj : drawableList) {
+		dObj->destroyModel();
+		dObj->destroyRenderObj();
+
+		// 디스크립터 레이아웃, 풀, 세트, 파이프라인 제거
+		dObj->destroyDescriptor();
+
+		dObj->destroyCommandBuffer();
+
+		dObj->destroyUniformBuffer();
+
+		free(dObj);
+	}
+
+	drawableList.clear();
+}
+
+void VKRenderer::destroyShader()
+{
+	shaderObj.destroyShaders();
 }

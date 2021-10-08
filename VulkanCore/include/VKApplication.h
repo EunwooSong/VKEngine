@@ -20,7 +20,7 @@ public:
 	// Simple program life cycle
 	void initialize();				// Initialize and allocate resources
 	void prepare();					// Prepare resource
-	//void update();					// Update data
+	void update();					// Update data
 	bool render();					// Render primitives
 	void deInitialize();			// Release resources
 

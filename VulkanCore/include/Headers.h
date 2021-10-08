@@ -17,6 +17,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <iomanip>
 #include <fstream>
 #include <assert.h>
@@ -24,6 +25,11 @@
 // Header files for Singleton
 #include <memory>
 #include <mutex>
+
+/*********** GLM HEADER FILES ***********/
+#define GLM_FORCE_RADIANS
+#include "glm/glm.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 
 /*********** VULKAN HEADER FILES ***********/
 #include <vulkan/vulkan.h>
