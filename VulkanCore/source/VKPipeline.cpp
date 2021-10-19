@@ -86,14 +86,15 @@ bool VKPipeline::createPipeline(VKDrawable* drawableObj, VkPipeline* pipeline, V
 	// the number of viewport and scissors being used in the
 	// rendering pipeline.
 	VkPipelineColorBlendAttachmentState colorBlendAttachmentStateInfo[1] = {};
-	colorBlendAttachmentStateInfo[0].colorWriteMask = 0xf;
-	colorBlendAttachmentStateInfo[0].blendEnable = VK_FALSE;
-	colorBlendAttachmentStateInfo[0].alphaBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachmentStateInfo[0].colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachmentStateInfo[0].srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachmentStateInfo[0].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachmentStateInfo[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachmentStateInfo[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachmentStateInfo[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachmentStateInfo[0].blendEnable = VK_TRUE;
+	colorBlendAttachmentStateInfo[0].blendEnable = VK_TRUE;
+	colorBlendAttachmentStateInfo[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachmentStateInfo[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachmentStateInfo[0].colorBlendOp			= VK_BLEND_OP_ADD;
+	colorBlendAttachmentStateInfo[0].srcAlphaBlendFactor	= VK_BLEND_FACTOR_ONE;
+	colorBlendAttachmentStateInfo[0].dstAlphaBlendFactor	= VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachmentStateInfo[0].alphaBlendOp			= VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
 	colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -154,18 +155,13 @@ bool VKPipeline::createPipeline(VKDrawable* drawableObj, VkPipeline* pipeline, V
 	multiSampleStateInfo.alphaToOneEnable = VK_FALSE;
 	multiSampleStateInfo.minSampleShading = 0.0;
 
-	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-	pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	VkResult  result;
-	result = vkCreatePipelineLayout(deviceObj->device, &pPipelineLayoutCreateInfo, NULL, &pipelineLayout);
-
 	// Populate the VkGraphicsPipelineCreateInfo structure to specify 
 	// programmable stages, fixed-function pipeline stages render
 	// pass, sub-passes and pipeline layouts
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.pNext = NULL;
-	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.layout = drawableObj->pipelineLayout;
 	pipelineInfo.basePipelineHandle = 0;
 	pipelineInfo.basePipelineIndex = 0;
 	pipelineInfo.flags = 0;
@@ -197,5 +193,4 @@ bool VKPipeline::createPipeline(VKDrawable* drawableObj, VkPipeline* pipeline, V
 void VKPipeline::destroyPipelineCache()
 {
 	vkDestroyPipelineCache(deviceObj->device, pipelineCache, NULL);
-	vkDestroyPipelineLayout(deviceObj->device, pipelineLayout, NULL);
 }

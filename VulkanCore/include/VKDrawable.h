@@ -1,6 +1,7 @@
 #pragma once
 #include "Headers.h"
 #include "VKDescriptor.h"
+#include "Wrappers.h"
 
 class VKRenderer;
 
@@ -81,6 +82,11 @@ public:
 public:
 	std::map<int, ModelObj*> models;
 	std::vector<RenderObj*> renderObjs;
+
+	PushConstantRaster m_pcRaster{
+		4,
+		0.3f
+	};
 
 	// 버텍스 입력 비율 저장
 	VkVertexInputBindingDescription		viIpBind;

@@ -31,6 +31,9 @@
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 
+/*********** GLI HEADER FILES ***********/
+#include <gli/gli.hpp>
+
 /*********** VULKAN HEADER FILES ***********/
 #include <vulkan/vulkan.h>
 #ifdef AUTO_COMPILE_GLSL_TO_SPV

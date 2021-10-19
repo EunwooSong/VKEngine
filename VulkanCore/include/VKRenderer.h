@@ -52,7 +52,6 @@ public:
 	void createShaders();
 	void createDescriptors();							// 디스크립터 세트 레이아웃 생성
 	void createPipelineStateManagement();
-	void createPushConstants();			// 푸시 상수 리소스 업데이트
 
 	void destroyCommandBuffer();
 	void destroyCommandPool();
@@ -85,10 +84,9 @@ public:
 		VkImageView		view;	// 깊이 이미지 개체의 깊이 이미지 뷰 개체
 	}Depth;
 
-	VkCommandBuffer		cmdDepthImage;	// 깊이 이미지 커맨드 버퍼
-	VkCommandPool		cmdPool;		// 커맨드 풀
-	VkCommandBuffer		cmdVertexBuffer;// 버텍스 버퍼 - Triangle geometry
-	VkCommandBuffer		cmdPushConstant;// 푸시 상수 버퍼
+	VkCommandBuffer		cmdDepthImage;		// 깊이 이미지 커맨드 버퍼
+	VkCommandPool		cmdPool;			// 커맨드 풀
+	VkCommandBuffer		cmdVertexBuffer;	// 버텍스 버퍼 - Triangle geometry
 	VkCommandBuffer		cmdUniformBuffer;
 
 	int					width, height;	// 윈도의 폭과 높이

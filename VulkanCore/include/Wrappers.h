@@ -170,4 +170,45 @@ public:
 	static void submitCommandBuffer(const VkQueue& queue, const VkCommandBuffer* cmdBufList, const VkSubmitInfo* submitInfo = NULL, const VkFence& fence = VK_NULL_HANDLE);
 };
 
+// PushConstantRaster : 푸시 상수에 들어갈 정보 미리 구조화
+struct PushConstantRaster {
+	int constColorRGBFlag;	// 색상 정보
+	float mixerValue;		// 믹스 값
+};
+
+// spvFile을 불러와~
 void* readFile(const char* spvFileName, size_t* fileSize);
+
+/***************TEXTURE WRAPPERS***************/
+struct TextureData {
+	VkSampler				sampler;
+	VkImage					image;
+	VkImageLayout			imageLayout;
+	VkMemoryAllocateInfo	memoryAlloc;
+	VkDeviceMemory			mem;
+	VkImageView				view;
+	uint32_t				mipMapLevels;
+	uint32_t				layerCount;
+	uint32_t				textureWidth, textureHeight;
+	VkDescriptorImageInfo	descsImgInfo;
+};
+
+/***************PNG PARSER CLASS***************/
+class PNGPaser {
+public:
+	PNGPaser();
+	~PNGPaser();
+	bool getHeaderInfo(const char* filename);
+	bool loadImageData(int rowPitch, uint8_t* rgba_data);
+	int32_t getImageWidth();
+	int32_t getImageHeight();
+	const char* filename() { return pngFile.c_str(); };
+
+private:
+	bool isValid;
+	int32_t imageWidth;
+	int32_t imageHeight;
+	int32_t dataPosition;
+	std::string pngFile;
+	gli::texture2D* tex2D;
+};

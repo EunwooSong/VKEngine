@@ -77,8 +77,21 @@ set(GLMINCLUDES "${EXTDIR}")
 get_filename_component(GLMINC_PREFIX "${GLMINCLUDES}" ABSOLUTE)
 if(NOT EXISTS ${GLMINC_PREFIX})
     message(FATAL_ERROR "Necessary glm headers do not exist: " ${GLMINC_PREFIX})
+else()
+	message(STATUS "Successfully located the GLM : " ${GLMINC_PREFIX})
 endif()
 include_directories( ${GLMINC_PREFIX} )
+
+# GLI SETUP - Image library to load texture files
+set (EXTDIR "${CMAKE_SOURCE_DIR}/../external/gli")
+set (GLIINCLUDES "${EXTDIR}")
+get_filename_component(GLIINC_PREFIX "${GLIINCLUDES}" ABSOLUTE)
+if(NOT EXISTS ${GLIINC_PREFIX})
+    message(FATAL_ERROR "Necessary gli headers do not exist: " ${GLIINC_PREFIX})
+	else()
+	message(STATUS "Successfully located the GLI : " ${GLIINC_PREFIX})
+endif()
+include_directories( ${GLIINC_PREFIX} )
 
 # Vulkan  응용 프로그램을 빌드하기 위해 vulkan-1 라이브러리 추가
 set(VULKAN_LIB_LIST "vulkan-1")

@@ -86,9 +86,6 @@ void VKRenderer::initialize()
 	// Manage the pipeline state objects
 	createPipelineStateManagement();
 
-	// Create PushConstants
-	createPushConstants();
-
 	ready = true;
 }
 
@@ -606,8 +603,8 @@ void VKRenderer::createShaders()
 #else
 	//vertShaderCode = readFile("./../Draw-vert.spv", &sizeVert);
 	//fragShaderCode = readFile("./../Draw-frag.spv", &sizeFrag);
-	vertShaderCode = readFile("./../PushConstant-vert.spv", &sizeVert);
-	fragShaderCode = readFile("./../PushConstant-frag.spv", &sizeFrag);
+	vertShaderCode = readFile("./../shaders/PushConstant-vert.spv", &sizeVert);
+	fragShaderCode = readFile("./../shaders/PushConstant-frag.spv", &sizeFrag);
 
 	shaderObj.buildShaderModuleWithSPV((uint32_t*)vertShaderCode, sizeVert, (uint32_t*)fragShaderCode, sizeFrag);
 #endif
@@ -660,46 +657,9 @@ void VKRenderer::createPipelineStateManagement()
 	}
 }
 
-void VKRenderer::createPushConstants()
-{
-	CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdPushConstant);
-	CommandBufferMgr::beginCommandBuffer(cmdPushConstant);
-
-	enum ColorFlag {
-		RED = 1,
-		GREEN = 2,
-		BLUE = 3,
-		MIXED_COLOR = 4,
-	};
-
-	float mixerValue = 0.3f;
-	unsigned constColorRGBFlag = BLUE;
-
-	// Create push constant data, this contain a constant
-	// color flag and mixer value for non-const color
-	unsigned pushConstants[2] = {};
-	pushConstants[0] = constColorRGBFlag;
-	memcpy(&pushConstants[1], &mixerValue, sizeof(float));
-
-	// Check if number of push constants does not exceed the allowed size
-	int maxPushContantSize = getDevice()->gpuProps.limits.maxPushConstantsSize;
-	if (sizeof(pushConstants) > maxPushContantSize) {
-		assert(0);
-		printf("Push constand size is greater than expected, max allow size is %d", maxPushContantSize);
-	}
-
-	for (VKDrawable * drawableObj : drawableList)
-	{
-		vkCmdPushConstants(cmdPushConstant, drawableObj->pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushConstants), pushConstants);
-	}
-
-	CommandBufferMgr::endCommandBuffer(cmdPushConstant);
-	CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdPushConstant);
-}
-
 void VKRenderer::destroyCommandBuffer()
 {
-	VkCommandBuffer cmdBufs[] = { cmdDepthImage, cmdPushConstant, cmdUniformBuffer, cmdVertexBuffer };
+	VkCommandBuffer cmdBufs[] = { cmdDepthImage, cmdUniformBuffer, cmdVertexBuffer };
 	vkFreeCommandBuffers(deviceObj->device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
 

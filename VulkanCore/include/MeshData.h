@@ -15,6 +15,13 @@ struct VertexWithUV
     float u, v;         // Texture format U,V
 };
 
+struct VertexWithUVColor
+{
+	float x, y, z, w;	// Vertex Position
+	float r, g, b, a;   // Color Format (RGBA)
+	float u, v;			// Texture format U,V
+};
+
 // 인터리빙 형식으로 좌표와 색상 속성 정보를 저장함
 // 3개의 버텍스에는 직교 좌표계의 위치 정보와 RGB 색상  공간에서의 색상 정보가 저장된다.
 static const VertexWithColor triangleData[] =
@@ -26,6 +33,7 @@ static const VertexWithColor triangleData[] =
 
 static const VertexWithColor squareData1[] =
 {
+	//  x  ,   y  ,  z  ,  w  ,  r  ,  g  ,  b  ,  a   
     { -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0 },
     {  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0 },
     {  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0 },
@@ -34,13 +42,24 @@ static const VertexWithColor squareData1[] =
 
 static const VertexWithColor squareData2[] =
 {
+	//  x  ,   y  ,  z  ,  w  ,  r  ,  g  ,  b  ,  a   
     { -0.1f,  0.1f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0 },
     {  0.1f,  0.1f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0 },
     {  0.1f, -0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0 },
     { -0.1f, -0.1f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0 },
 };
 
-static const uint16_t squareIndices[] = { 0, 1, 2, 2, 3, 0 }; // 6 indices // 6개 인덱스
+static const VertexWithUVColor squareImageData3[] = {
+
+	//  x  ,   y  ,  z  ,  w  ,  r  ,  g  ,  b  ,  a ,  u  ,  v
+	{ -0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0, 1.0f, 0.0f },
+	{  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0, 0.0f, 0.0f },
+	{  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0, 0.0f, 1.0f },
+	{ -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0, 1.0f, 1.0f }
+};
+
+// 6 indices // 0,1,2 -> 1번 삼각 // 2,3,0 -> 2번 삼각
+static const uint16_t squareIndices[] = { 0, 1, 2,  2, 3, 0 };
 
 static const VertexWithColor geometryData[] =
 {

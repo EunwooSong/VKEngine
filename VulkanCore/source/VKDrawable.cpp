@@ -163,7 +163,9 @@ void VKDrawable::prepare()
 	CommandBufferMgr::allocCommandBuffer(&deviceObj->device, *rendererObj->getCommandPool(), &cmdDraw);
 
 	//렌더 오브젝트를 등록한다.
-	createRenderObject(loadModel(3));
+	createRenderObject(loadModel(2));
+	createRenderObject(loadModel(0));
+	createRenderObject(loadModel(1));
 }
 
 void VKDrawable::update()
@@ -176,10 +178,9 @@ void VKDrawable::update()
 		glm::vec3(0, 1, 0)		// Head is up
 	);
 	Model = glm::mat4(1.0f);
-	static float rot = 0;
-	rot += .0005f;
-	Model = glm::rotate(Model, rot, glm::vec3(0.0, 1.0, 0.0))
-		* glm::rotate(Model, rot, glm::vec3(1.0, 1.0, 1.0));
+	static float rot = glm::radians(180.0f);
+	//rot += 1.0f;
+	Model = glm::rotate(Model, rot, glm::vec3(0.0, 1.0, 0.0));
 
 	glm::mat4 MVP = Projection * View * Model;
 
@@ -206,6 +207,8 @@ void VKDrawable::render(VkSemaphore* presentCompleteSemaphore, VkSemaphore* draw
 {
 	// 1. 커맨드 버퍼를 작성하고
 	CommandBufferMgr::beginCommandBuffer(cmdDraw);
+
+	// 유니폼 버퍼를 업데이트 하고..
 
 	// 2. 렌더 패스를 시작한다.
 	VkClearValue clearValues[2];
@@ -255,16 +258,21 @@ void VKDrawable::render(VkSemaphore* presentCompleteSemaphore, VkSemaphore* draw
 
 		// 버텍스 버퍼 바인딩
 		vkCmdBindVertexBuffers(cmdDraw, 0, 1, &model->vBuffer.buf, offsets);
-		
+
+		// 푸시 상수 전송
+		vkCmdPushConstants(cmdDraw,
+			pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+			0, sizeof(PushConstantRaster), &m_pcRaster);
+
 		// 인덱스 버퍼 바인딩
-		//vkCmdBindIndexBuffer(cmdDraw, model->vIndex.idx, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(cmdDraw, model->vIndex.idx, 0, VK_INDEX_TYPE_UINT16);
 
 		// 인덱스 버퍼 그려
-		//vkCmdDrawIndexed(cmdDraw, 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(cmdDraw, 6, 1, 0, 0, 0);
 	}
 
 	//그려줘어~
-	vkCmdDraw(cmdDraw, 3 * 2 * 6, 1 ,0 ,0);
+	//vkCmdDraw(cmdDraw, 3, 1 ,0 ,0);
 
 	//렌더 패스를 종료한다.
 	vkCmdEndRenderPass(cmdDraw);
@@ -554,7 +562,7 @@ void VKDrawable::createPipelineLayout()
 	VkPushConstantRange pushConstantRanges[pushConstantRangeCount] = {};
 	pushConstantRanges[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	pushConstantRanges[0].offset = 0;
-	pushConstantRanges[0].size = 8;
+	pushConstantRanges[0].size = sizeof(PushConstantRaster);
 
 	// 디스크립터 레이아웃을 사용해 파이프라인 레이아웃을 생성한다.
 	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
